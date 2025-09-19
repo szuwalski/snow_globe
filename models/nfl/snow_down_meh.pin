@@ -1,0 +1,33 @@
+# snow crab decline analysis
+# log_m_imm : initial immature numbers at size
+14 15 16 18 19 19 19 19 19 18 18 18 17 17 16 14 13 11 11 9 7
+# log_m_mat : initial immature numbers at size
+5 10 15 16 18 18 18 18 18 19 18 18 18 18 17 17 16 15 15 14 13
+# nat_m_dev :  natural mortality matrix
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# nat_m_mat_dev : natural mortality matrix
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# q_dev :  catchability matrix
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# q_dev_mat : log catchability matrix
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# log_recruits : estimated recruitments
+17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585 17.88585
+# sigma_m : sigma natural mortality
+0.1 0.1
+# log_mu_m : log avg natural mortality
+-1.203973 -1.203973
+# prop_rec : proportion recruiting
+0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
+# sigma_q 
+0.1 0.1
+# f_mort : fully-selected fishing mortality
+0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
+# tot_fish_sel_50 : fully-selected fishing mortality
+90
+# tot_fish_sel_slope : fully-selected fishing mortality
+.25
+# ret_fish_sel_50 : fully-selected fishing mortality
+100
+# ret_fish_sel_slope : fully-selected fishing mortality
+1
