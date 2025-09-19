@@ -244,6 +244,7 @@ model_parameters::model_parameters(int sz,int argc,char * argv[]) :
   #endif
   total_population_n.allocate(styr,endyr,"total_population_n");
   fished_population_n.allocate(styr,endyr,"fished_population_n");
+  recruits.allocate(styr,endyr,"recruits");
   imm_num_like.allocate("imm_num_like");
   #ifndef NO_AD_INITIALIZE
   imm_num_like.initialize();
@@ -440,6 +441,7 @@ void model_parameters::userfunction(void)
        trans_imm(1) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(1);
        trans_imm(2) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(2);
 	   trans_imm(3) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(3);
+       recruits(year) = exp(log_avg_rec + rec_devs(year));
 	  // maturity
 	   for (int size=1;size<=size_n;size++) 
 	   {

@@ -133,7 +133,8 @@ PARAMETER_SECTION
   
   sdreport_vector total_population_n(styr,endyr)
   sdreport_vector fished_population_n(styr,endyr) 
-   
+  sdreport_vector recruits(styr,endyr)  
+  
   number imm_num_like
   number mat_num_like
   number ret_cat_like
@@ -283,6 +284,9 @@ PROCEDURE_SECTION
        trans_imm(1) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(1);
        trans_imm(2) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(2);
 	   trans_imm(3) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(3);
+
+       recruits(year) = exp(log_avg_rec + rec_devs(year));
+
 
 	  // maturity
 	   for (int size=1;size<=size_n;size++) 

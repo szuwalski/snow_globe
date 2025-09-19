@@ -154,6 +154,7 @@ private:
   param_vector sum_disc_numbers_obs;
   param_stddev_vector total_population_n;
   param_stddev_vector fished_population_n;
+  param_stddev_vector recruits;
   param_number imm_num_like;
   param_number mat_num_like;
   param_number ret_cat_like;
