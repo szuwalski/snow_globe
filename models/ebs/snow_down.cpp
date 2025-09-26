@@ -747,6 +747,8 @@ void model_parameters::report(const dvector& gradients)
   report << sigma_numbers_mat << endl;	
   report <<"$ret_cat_yrs" << endl;
   report << ret_cat_yrs << endl;	 
+    report <<"$disc_cat_yrs" << endl;
+  report << ret_cat_yrs << endl;	 
     save_gradients(gradients);
 }
 

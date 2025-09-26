@@ -131,8 +131,8 @@ model_parameters::model_parameters(int sz,int argc,char * argv[]) :
   sigma_q.allocate(1,2,0.01,4,est_sigma_q,"sigma_q");
   log_f.allocate(-5,5,"log_f");
   f_dev.allocate(styr,endyr,-5,5,"f_dev");
-  fish_ret_sel_50.allocate(25,150,3,"fish_ret_sel_50");
-  fish_ret_sel_slope.allocate(0.0001,20,3,"fish_ret_sel_slope");
+  fish_ret_sel_50.allocate(25,150,-3,"fish_ret_sel_50");
+  fish_ret_sel_slope.allocate(0.0001,20,-3,"fish_ret_sel_slope");
   fish_tot_sel_50.allocate(25,150,2,"fish_tot_sel_50");
   fish_tot_sel_slope.allocate(0.0001,20,2,"fish_tot_sel_slope");
   surv_sel_50.allocate(25,150,2,"surv_sel_50");
@@ -337,6 +337,9 @@ model_parameters::model_parameters(int sz,int argc,char * argv[]) :
   #ifndef NO_AD_INITIALIZE
   tot_prop_rec.initialize();
   #endif
+  total_population_n.allocate(styr,endyr,"total_population_n");
+  fished_population_n.allocate(styr,endyr,"fished_population_n");
+  recruits.allocate(styr,endyr,"recruits");
   f.allocate("f");
   prior_function_value.allocate("prior_function_value");
   likelihood_function_value.allocate("likelihood_function_value");
@@ -440,6 +443,7 @@ void model_parameters::userfunction(void)
        trans_imm(1) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(1);
        trans_imm(2) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(2);
 	   trans_imm(3) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(3);
+       recruits(year) = exp(log_avg_rec + rec_devs(year));
 	  // maturity
 	   for (int size=1;size<=size_n;size++) 
 	   {
@@ -458,11 +462,6 @@ void model_parameters::userfunction(void)
    // cout<<"pred_retained_size_comp"<<pred_retained_size_comp<<endl;
    // cout<<"pred_discard_size_comp"<<pred_discard_size_comp<<endl;
    evaluate_the_objective_function();
-#ifdef DEBUG
-  std::cout << "DEBUG: Total gradient stack used is " << gradient_structure::get()->GRAD_STACK1->total() << " out of " << gradient_structure::get_GRADSTACK_BUFFER_SIZE() << std::endl;;
-  std::cout << "DEBUG: Total dvariable address used is " << gradient_structure::get()->GRAD_LIST->total_addresses() << " out of " << gradient_structure::get_MAX_DLINKS() << std::endl;;
-  std::cout << "DEBUG: Total dvariable address used is " << gradient_structure::get()->ARR_LIST1->get_max_last_offset() << " out of " << gradient_structure::get_ARRAY_MEMBLOCK_SIZE() << std::endl;;
-#endif
 }
 
 void model_parameters::evaluate_the_objective_function(void)
@@ -474,6 +473,8 @@ void model_parameters::evaluate_the_objective_function(void)
   sum_mat_numbers_obs.initialize(); 
   pred_retained_n.initialize();
   pred_discard_n.initialize();
+  total_population_n.initialize();
+  fished_population_n.initialize();
   for (int year=styr;year<=endyr;year++)
    for (int size=1;size<=size_n;size++)
    {
@@ -481,6 +482,8 @@ void model_parameters::evaluate_the_objective_function(void)
     mat_numbers_pred(year)    += selectivity_mat(year,size)*mat_n_size_pred(year,size);
 	sum_imm_numbers_obs(year) += imm_n_size_obs(year,size);
 	sum_mat_numbers_obs(year) += mat_n_size_obs(year,size);
+		total_population_n(year)  += imm_n_size_pred(year,size)+mat_n_size_pred(year,size);
+	fished_population_n(year)  += retain_fish_sel(size)*imm_n_size_pred(year,size)+retain_fish_sel(size)*mat_n_size_pred(year,size);
    }
    for (int year=styr;year<endyr;year++)
    for (int size=1;size<=size_n;size++)
@@ -551,7 +554,7 @@ void model_parameters::evaluate_the_objective_function(void)
   nat_m_mu_like += pow(((log_m_mu)-(log_mu_m_prior))/ (sqrt(2)*sqrt(sigma_m_mu(1))),2.0);
   nat_m_mat_mu_like =0;
   nat_m_mat_mu_like += pow(((log_m_mat_mu(1))-(log_mu_m_mat_prior(1)))/ (sqrt(2)*sqrt(sigma_m_mu(2))),2.0); 
-  if(est_m_devs>0)
+  if(est_m_devs>0 & current_phase()>=est_m_mat_devs)
   {
   nat_m_like =0;
   for (int year=styr;year<=endyr;year++)
@@ -720,6 +723,31 @@ void model_parameters::report(const dvector& gradients)
   {
     report << (use_term_molt(i))<<endl;
   }
+    report <<"$skip_molt" << endl;
+  for(int i=styr; i<=endyr; i++)
+  {
+    report << (prop_skip(i))<<endl;
+  }
+  report <<"$obs_imm_n_size" << endl;
+  for(int i=styr; i<=endyr; i++)
+  {
+    report << imm_n_size_obs(i)<<endl;
+  }
+  report <<"$obs_mat_n_size" << endl;
+  for(int i=styr; i<=endyr; i++)
+  {
+    report << mat_n_size_obs(i)<<endl;
+  }
+ 	   report <<"$sizes" << endl;
+  report << sizes << endl;	
+  report <<"$imm_cv" << endl;
+  report << sigma_numbers_imm << endl;	
+  report <<"$mat_cv" << endl;
+  report << sigma_numbers_mat << endl;	
+  report <<"$ret_cat_yrs" << endl;
+  report << ret_cat_yrs << endl;	 
+  report <<"$disc_cat_yrs" << endl;
+  report << disc_cat_yrs << endl;	 
     save_gradients(gradients);
 }
 
@@ -774,7 +802,7 @@ std::feclearexcept(FE_ALL_EXCEPT);
     gradient_structure::set_YES_SAVE_VARIABLES_VALUES();
     if (!arrmblsize) arrmblsize=15000000;
     model_parameters mp(arrmblsize,argc,argv);
-    mp.iprint = defaults::iprint;
+    mp.iprint=10;
     mp.preliminary_calculations();
     mp.computations(argc,argv);
 #ifdef DEBUG

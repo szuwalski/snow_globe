@@ -411,7 +411,7 @@ FUNCTION evaluate_the_objective_function
     f_prior += pow((f_mort(year)-1)/ (sqrt(2)*sqrt(50)),2.0);
    }
    
-  if(est_m_devs>0)
+  if(est_m_devs>0&current_phase()>=est_m_mat_devs)
   {
   nat_m_like =0;
   for (int year=styr;year<=endyr;year++)
@@ -650,7 +650,8 @@ REPORT_SECTION
   report <<"$ret_cat_yrs" << endl;
   report << ret_cat_yrs << endl;	 
   
-  
+    report <<"$disc_cat_yrs" << endl;
+  report << ret_cat_yrs << endl;	 
     save_gradients(gradients);
   
 RUNTIME_SECTION

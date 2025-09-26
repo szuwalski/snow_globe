@@ -89,7 +89,7 @@ public:
     return (initial_params::current_phase
       >=initial_params::max_number_phases);
   }
-  static prevariable& current_feval(void)
+  static prevariable current_feval(void)
   {
     return *objective_function_value::pobjfun;
   }
@@ -175,6 +175,9 @@ private:
   param_number smooth_surv_like;
   param_vector temp_prop_rec;
   param_number tot_prop_rec;
+  param_stddev_vector total_population_n;
+  param_stddev_vector fished_population_n;
+  param_stddev_vector recruits;
   param_number prior_function_value;
   param_number likelihood_function_value;
   objective_function_value f;

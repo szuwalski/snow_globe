@@ -94,8 +94,8 @@ PARAMETER_SECTION
   
   init_bounded_number log_f(-5,5)
   init_bounded_dev_vector f_dev(styr,endyr,-5,5)
-  init_bounded_number fish_ret_sel_50(25,150,3)
-  init_bounded_number fish_ret_sel_slope(0.0001,20,3)
+  init_bounded_number fish_ret_sel_50(25,150,-3)
+  init_bounded_number fish_ret_sel_slope(0.0001,20,-3)
   init_bounded_number fish_tot_sel_50(25,150,2)
   init_bounded_number fish_tot_sel_slope(0.0001,20,2) 
   //init_bounded_vector surv_sel(1,size_n,0.000001,1,-2)
@@ -160,6 +160,10 @@ PARAMETER_SECTION
   
   vector temp_prop_rec(1,3)
   number tot_prop_rec
+  
+    sdreport_vector total_population_n(styr,endyr)
+  sdreport_vector fished_population_n(styr,endyr) 
+  sdreport_vector recruits(styr,endyr)  
   
   objective_function_value f
   
@@ -286,7 +290,8 @@ PROCEDURE_SECTION
        trans_imm(1) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(1);
        trans_imm(2) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(2);
 	   trans_imm(3) += exp(log_avg_rec + rec_devs(year))*temp_prop_rec(3);
-
+       recruits(year) = exp(log_avg_rec + rec_devs(year));
+	   
 	  // maturity
 	   for (int size=1;size<=size_n;size++) 
 	   {
@@ -320,7 +325,9 @@ FUNCTION evaluate_the_objective_function
   sum_mat_numbers_obs.initialize(); 
   pred_retained_n.initialize();
   pred_discard_n.initialize();
-
+  total_population_n.initialize();
+  fished_population_n.initialize();
+  
   for (int year=styr;year<=endyr;year++)
    for (int size=1;size<=size_n;size++)
    {
@@ -328,6 +335,9 @@ FUNCTION evaluate_the_objective_function
     mat_numbers_pred(year)    += selectivity_mat(year,size)*mat_n_size_pred(year,size);
 	sum_imm_numbers_obs(year) += imm_n_size_obs(year,size);
 	sum_mat_numbers_obs(year) += mat_n_size_obs(year,size);
+		total_population_n(year)  += imm_n_size_pred(year,size)+mat_n_size_pred(year,size);
+	fished_population_n(year)  += retain_fish_sel(size)*imm_n_size_pred(year,size)+retain_fish_sel(size)*mat_n_size_pred(year,size);
+
    }
    for (int year=styr;year<endyr;year++)
    for (int size=1;size<=size_n;size++)
@@ -415,7 +425,7 @@ FUNCTION evaluate_the_objective_function
   nat_m_mat_mu_like =0;
   nat_m_mat_mu_like += pow(((log_m_mat_mu(1))-(log_mu_m_mat_prior(1)))/ (sqrt(2)*sqrt(sigma_m_mu(2))),2.0); 
    
-  if(est_m_devs>0)
+  if(est_m_devs>0 & current_phase()>=est_m_mat_devs)
   {
   nat_m_like =0;
   for (int year=styr;year<=endyr;year++)
@@ -611,7 +621,42 @@ REPORT_SECTION
   {
     report << (use_term_molt(i))<<endl;
   }
- 	 
+  
+    report <<"$skip_molt" << endl;
+  for(int i=styr; i<=endyr; i++)
+  {
+    report << (prop_skip(i))<<endl;
+  }
+  report <<"$obs_imm_n_size" << endl;
+  for(int i=styr; i<=endyr; i++)
+  {
+
+    report << imm_n_size_obs(i)<<endl;
+  }
+  
+  report <<"$obs_mat_n_size" << endl;
+  for(int i=styr; i<=endyr; i++)
+  {
+    report << mat_n_size_obs(i)<<endl;
+  }
+ 
+
+ 
+ 	   report <<"$sizes" << endl;
+  report << sizes << endl;	
+  
+  report <<"$imm_cv" << endl;
+  report << sigma_numbers_imm << endl;	
+  
+  report <<"$mat_cv" << endl;
+  report << sigma_numbers_mat << endl;	
+ 
+  report <<"$ret_cat_yrs" << endl;
+  report << ret_cat_yrs << endl;	 
+ 
+  report <<"$disc_cat_yrs" << endl;
+  report << disc_cat_yrs << endl;	 
+ 
    
     save_gradients(gradients);
   

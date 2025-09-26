@@ -183,7 +183,7 @@
 # smooth_m_weight 																												
 .1 .1																												
 # est_log_m_mu																												
--1																												
+1																												
 # est_log_m_mu_mat																												
 1																												
 # est_sigma_q																												

@@ -16,28 +16,63 @@ annotation_custom2 <-   function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf,yma
                                                                                                                     ymin = ymin, ymax = ymax))}
 
 
+gsl_area<-57842
+nfl_area<-364960
+ebs_area<-463400
+
 #==color coordinate the estimates with figure 1
-rep_files<-c("/models/snow/snow_down.rep",
-             "/models/tanner/tanner.rep")
+rep_files<-c("/models/ebs/snow_down.rep",
+             "/models/nfl/snow_down.rep",
+             "/models/gsl/snow_down.rep")
 
-species<-c("Snow", "Tanner")
+species<-c("Bering Sea", "Newfoundland","Gulf of St Lawrence")
+in_col<-c("#3da550","#ff8f38","#726ad0")
+
 outs_in<-list(list())
-
 for(x in 1:length(rep_files))
   outs_in[[x]]<-readList(paste(getwd(),rep_files[x],sep=""))
 
 #==get uncertainty in M estimates
-cor_files<-c("/models/snow/snow_down.cor",
-             "/models/tanner/tanner.cor")
-keep_uncertainty_m_ch<-NULL
-
+cor_files<-c("/models/ebs/snow_down.cor",
+             "/models/nfl/snow_down.cor",
+             "/models/gsl/snow_down.cor")
+keep_uncertainty_m<-NULL
+keep_uncertainty_totn<-NULL
+keep_uncertainty_fishn<-NULL
+keep_uncertainty_rec<-NULL
 labs<-c("imm","mat")
 for(x in 1:length(cor_files))
 {
+  #==recruitment
+  ttt<-readLines(paste(getwd(),cor_files[x],sep=""))
+  take_em<-grep('recruits',ttt)
+  yrs<-seq(outs_in[[x]]$styr,outs_in[[x]]$endyr)
+  inds<-matrix(c(24,25,20,21,20,21),ncol=2,nrow=length(cor_files),byrow=T)
+  for(y in 1:length(take_em))
+    {
+      zzz<-unlist(strsplit(ttt[take_em[y]],split=' '))
+      rec_mu<-as.numeric(zzz[inds[x,1]])
+      rec_sd<-as.numeric(zzz[inds[x,2]])
+      up_rec<-rec_mu+1.96*rec_sd
+      dn_rec<-rec_mu-1.96*rec_sd
+      if(dn_rec<0) dn_rec<-0
+      
+      tmp<-data.frame(stock=paste(species[x],sep=""),
+                      est_m=rec_mu,
+                      up_m=up_rec,
+                      dn_m=dn_rec,
+                      sd=rec_sd,
+                      Year=yrs[y])
+      keep_uncertainty_rec<-rbind(keep_uncertainty_rec,tmp)
+    }
+  
+  
+  #==mortality
   ttt<-readLines(paste(getwd(),cor_files[x],sep=""))
   take_em<-grep('nat_m_dev',ttt)
   take_em_mat<-grep('nat_m_mat_dev',ttt)
   take_em_m<-grep('log_m_mu',ttt)
+  take_em_m2<-grep('log_m_mat_mu',ttt)
   yrs<-seq(outs_in[[x]]$styr,outs_in[[x]]$endyr)
   for(z in 1:2)
   for(y in 1:length(take_em))
@@ -46,6 +81,8 @@ for(x in 1:length(cor_files))
     if(z==2)
      zzz<-unlist(strsplit(ttt[take_em_mat[y]],split=' '))
     m_mu<-unlist(strsplit(ttt[take_em_m[z]],split=' '))
+    if(x==2)
+      m_mu<-unlist(strsplit(ttt[take_em_m2[z]],split=' '))
     m_mu<-as.numeric(m_mu[nzchar(m_mu)][3])
     tmp<-data.frame(stock=paste(species[x],"_",labs[z],sep=""),
                     est_m=exp(m_mu+as.numeric(zzz[nzchar(zzz)][3])),
@@ -53,9 +90,10 @@ for(x in 1:length(cor_files))
                     dn_m=exp(m_mu+as.numeric(zzz[nzchar(zzz)][3])-as.numeric(zzz[nzchar(zzz)][4])*1.96),
                     sd=as.numeric(zzz[nzchar(zzz)][4]),
                     Year=yrs[y])
-    keep_uncertainty_m_ch<-rbind(keep_uncertainty_m_ch,tmp)
+    keep_uncertainty_m<-rbind(keep_uncertainty_m,tmp)
   }
   
+  #==total population
   take_em<-grep('total_population_n',ttt)
   yrs<-seq(outs_in[[x]]$styr,outs_in[[x]]$endyr)
   for(y in 1:length(take_em))
@@ -84,6 +122,65 @@ for(x in 1:length(cor_files))
     keep_uncertainty_fishn<-rbind(keep_uncertainty_fishn,tmp)
   }
 }
+
+
+stoopid<-keep_uncertainty_fishn
+stoopid2<-keep_uncertainty_totn
+stoopid$fraction<-"Fishable"
+stoopid2$fraction<-"Total"
+in_pl<-rbind(stoopid,stoopid2)
+pop_traj<-ggplot()+
+  geom_ribbon(data=in_pl,aes(x=Year,ymin=dn_m,ymax=up_m,fill=stock),alpha=.3)+
+  geom_line(data=in_pl,aes(x=Year,y=tot_n,col=stock),alpha=.7)+
+  geom_point(data=in_pl,aes(x=Year,y=tot_n,col=stock),alpha=.7,size=.51)+
+  theme_bw()+
+  facet_wrap(~fraction,scales='free_y',ncol=1)+
+  scale_color_manual(values=in_col)+ylab("Abundance")+ 
+  scale_fill_manual(values=in_col)+
+  theme(legend.position=c(.8,.8))
+png("plots/all_traj.png",height=6,width=9,res=400,units='in')
+print(pop_traj)
+dev.off()
+
+ttt<-NULL
+for(x in 1:length(species))
+{
+  tttt<-data.frame(ret_cat=outs_in[[x]]$ret_cat_numbers,
+             Year=outs_in[[x]]$ret_cat_yrs,
+             stock=species[x])
+
+  tmp<-sweep(outs_in[[x]]$obs_mat_n_size,1,outs_in[[x]]$mat_n_obs,FUN="*")
+  if(x==1)
+    tmp<-outs_in[[x]]$obs_mat_n_size
+  sss<-data.frame(Year=seq(outs_in[[x]]$styr,outs_in[[x]]$endyr),
+                  obs_lg_95=apply(tmp[,which(outs_in[[x]]$sizes>95)],1,sum))
+  tttt<-merge(tttt,sss,by="Year")
+  ttt<-rbind(ttt,tttt)
+}
+tmp<-merge(ttt,stoopid,by=c("Year","stock"),keep=ALL) 
+tmp$pred_ratio<-tmp$ret_cat/tmp$tot_n
+tmp$obs_ratio<-tmp$ret_cat/tmp$obs_lg_95
+a<-ggplot(tmp)+
+  geom_point(aes(x=Year,y=pred_ratio,col=stock),lwd=1.2)+
+  geom_line(aes(x=Year,y=pred_ratio,col=stock),lwd=0.8,lty=2,alpha=0.3)+
+  geom_smooth(aes(x=Year,y=pred_ratio,col=stock,fill=stock),alpha=0.1)+
+  theme_bw()+expand_limits(y=0)+
+  theme(legend.position='none')+ylab("Retained/Pred N <95mm")
+b<-ggplot(filter(tmp,obs_lg_95>0))+
+  geom_line(aes(x=Year,y=obs_ratio,col=stock),lwd=1.2)+
+  geom_point(aes(x=Year,y=obs_ratio,col=stock),size=2)+
+  theme_bw()+expand_limits(y=0)+theme(legend.position=c(.2,.8))+ylab("Retained/Obs N <95mm")
+
+png("plots/all_exprate.png",height=6,width=9,res=400,units='in')
+a/b
+dev.off()
+
+
+#==observed ratios of catch to survey biomass
+names(outs_in[[x]])
+which(outs_in[[x]]$sizes>95)
+tmp<-sweep(outs_in[[x]]$obs_mat_n_size,1,outs_in[[x]]$mat_n_obs,FUN="*")
+
 
 
 #==need a flag for the type of mortality to split for snow + tanner?
@@ -118,7 +215,7 @@ for(x in 1:length(outs_in))
   plot_dat$species<-species[x]
   all_dat_mat<-rbind(all_dat_mat,plot_dat)                
 }
-in_col<-c("#3da550","#ff8f38","#3da550","#ff8f38")
+in_col<-c("#3da550","#ff8f38","#726ad0")
 all_dat_mat$process<-as.character(all_dat_mat$process)
 all_dat_mat$process<-factor(all_dat_mat$process, levels=c("Other mortality (mat)","Fishing mortality"))
 all_dat_mat$values[all_dat_mat$process=='Fishing mortality' & all_dat_mat$values==0]<-NA
@@ -169,7 +266,7 @@ chion_proc_agg<-ggplot()+
 
 #==need to put the CVs in the .REP files and pull here
 #==immature indices
-div_n<-c(max(outs_in[[1]]$imm_n_obs),max(outs_in[[2]]$imm_n_obs))
+div_n<-c(max(outs_in[[1]]$imm_n_obs),max(outs_in[[2]]$imm_n_obs),max(outs_in[[3]]$imm_n_obs))
 ind_dat_imm<-NULL
 
 for(x in 1:length(outs_in))
@@ -204,7 +301,7 @@ imm_abnd<-ggplot(data=ind_dat_imm)+
 
 
 #==mature indices
-div_n<-c(max(outs_in[[1]]$mat_n_obs),max(outs_in[[2]]$mat_n_obs))
+div_n<-c(max(outs_in[[1]]$mat_n_obs),max(outs_in[[2]]$mat_n_obs),max(outs_in[[3]]$mat_n_obs))
 ind_dat_mat<-NULL
 for(x in 1:length(outs_in))
 {
@@ -247,29 +344,49 @@ dev.off()
 # correlations between time series
 # need to pull spawning biomass in there too
 #============================================
-div_n_imm<-c(max(apply(outs_in[[1]]$pred_imm_pop_num,1,sum)),max(apply(outs_in[[2]]$pred_imm_pop_num,1,sum)))
-div_n_mat<-c(max(apply(outs_in[[1]]$pred_mat_pop_num,1,sum)),max(apply(outs_in[[2]]$pred_mat_pop_num,1,sum)))
+div_n_imm<-c(max(apply(outs_in[[1]]$pred_imm_pop_num,1,sum)),
+             max(apply(outs_in[[2]]$pred_imm_pop_num,1,sum)),
+             max(apply(outs_in[[3]]$pred_imm_pop_num,1,sum)))
+div_n_mat<-c(max(apply(outs_in[[1]]$pred_mat_pop_num,1,sum)),
+             max(apply(outs_in[[2]]$pred_mat_pop_num,1,sum)),
+             max(apply(outs_in[[3]]$pred_mat_pop_num,1,sum)))
 
 all_dat<-NULL
 for(x in 1:length(outs_in))
 {
   years<-seq(outs_in[[x]]$styr,outs_in[[x]]$endyr)
-  plot_dat<-data.frame(values=c(outs_in[[x]]$recruits/max(outs_in[[x]]$recruits),
+  avg_size<-rep(NA,length(years))
+  for(y in 1:length(years))
+    avg_size[y]<-weighted.mean(outs_in[[x]]$sizes,w=outs_in[[x]]$pred_imm_pop_num[y,])
+  
+
+  plot_dat<-data.frame(values=c(outs_in[[x]]$recruits,
                                 outs_in[[x]]$`natural mortality`[,1],
                                 outs_in[[x]]$`mature natural mortality`[,1],
                                 outs_in[[x]]$est_fishing_mort,
                                 apply(outs_in[[x]]$pred_imm_pop_num,1,sum)/div_n_imm[x],
-                                apply(outs_in[[x]]$pred_mat_pop_num,1,sum)/div_n_mat[x]),
-                       Year=c(years-5,rep(years,5)),
+                                apply(outs_in[[x]]$pred_mat_pop_num,1,sum)/div_n_mat[x],
+                                avg_size),
+                       Year=c(years-5,rep(years,6)),
                        process=c(rep("Recruitment",length(years)),
                                  rep("M_imm",length(years)),
                                  rep("M_mat",length(years)),
                                  rep("Fishing mortality",length(years)),
                                  rep("N_imm",length(years)),
-                                 rep("Spawner abundance",length(years))))
+                                 rep("N_mat",length(years)),
+                                 rep("avg_size",length(years))))
   plot_dat$species<-species[x]
   all_dat<-rbind(all_dat,plot_dat)                
 }
+
+
+all_dat$species_process<-paste(all_dat$species,"_",substring(all_dat$process,1,1),sep="")
+out_dat<-rbind(all_dat)
+write.csv(out_dat,"data/all_output.csv")
+
+unc_m_est<-rbind(keep_uncertainty_m)
+write.csv(unc_m_est,"data/uncertainty_mort.csv")
+write.csv(keep_uncertainty_rec,"data/uncertainty_rec.csv")
 
 library(GGally)
 casted<-dcast(all_dat,Year~species+process,value.var="values")[,-1]
@@ -331,16 +448,43 @@ png("plots/chion_cors.png",height=13,width=13,res=400,units='in')
 print(p1)
 dev.off()
 
-all_dat$species_process<-paste(all_dat$species,"_",substring(all_dat$process,1,1),sep="")
-out_dat<-rbind(all_dat_kc,all_dat)
-write.csv(out_dat,"data/all_output.csv")
 
-unc_m_est<-rbind(keep_uncertainty_m,keep_uncertainty_m_ch)
-write.csv(unc_m_est,"data/uncertainty_mort.csv")
+
 
 #==============================================
 #==plot model fits
 #=============================================
+#==size comp residuals here
+bubble_plot<-function(obs_sc,pred_sc)
+{
+  diffs<-(pred_sc-obs_sc)/(obs_sc) 
+  diffs[diffs=="NaN"]<-0
+  diffs[diffs=="Inf"]<-0
+  diffs[diffs>5]<-5
+  rownames(diffs)<-rownames(diffs)
+  colnames(diffs)<-colnames(diffs)
+  out_mat<-melt(diffs)
+  out_mat$sign<-sign(out_mat$value)
+  out_mat$value<-abs(out_mat$value)
+  colnames(out_mat)<-c("Year","Size","value","sign")
+  
+  obs_mat<-melt(obs_sc)
+  colnames(obs_mat)<-c("Year","Size","obs")
+  
+  in_mat<-merge(out_mat,obs_mat,by=c("Year","Size"))
+  in_mat$obs<-in_mat$obs/median(in_mat$obs,na.rm=T)
+  out_plot<-ggplot(in_mat)+
+    geom_point(aes(y=Size,x=Year,size=value,col=as.factor(sign),alpha=obs))+
+    theme_bw()+xlab("Year")+ylab("Carapace width (mm)")+
+    labs(col="Error direction",size="Relative error")+guides(alpha='none')
+  # out_plot<-ggplot(in_mat)+
+  #   geom_point(aes(y=Size,x=Year,size=value,col=as.factor(sign)),alpha=.9)+
+  #   theme_bw()+xlab("Year")+ylab("Carapace width (mm)")+
+  #   labs(col="Residual direction",size="Residual size")
+  return(out_plot)
+}
+
+
 for(y in 1:length(species))
 {
 # imm
@@ -376,38 +520,10 @@ imm_size_all<-ggplot(data=input_size,aes(x = (Size), y =Proportion,col=quant)) +
         panel.background = element_blank()) +
   facet_wrap(~Year)+ labs(col='') 
 
-#==size comp residuals here
-bubble_plot<-function(obs_sc,pred_sc)
-{
-  diffs<-(pred_sc-obs_sc)/(obs_sc) 
-  diffs[diffs=="NaN"]<-0
-  diffs[diffs=="Inf"]<-0
-  diffs[diffs>5]<-5
-  rownames(diffs)<-rownames(diffs)
-  colnames(diffs)<-colnames(diffs)
-  out_mat<-melt(diffs)
-  out_mat$sign<-sign(out_mat$value)
-  out_mat$value<-abs(out_mat$value)
-  colnames(out_mat)<-c("Year","Size","value","sign")
-  
-  obs_mat<-melt(obs_sc)
-  colnames(obs_mat)<-c("Year","Size","obs")
-  
-  in_mat<-merge(out_mat,obs_mat,by=c("Year","Size"))
-  in_mat$obs<-in_mat$obs/median(in_mat$obs,na.rm=T)
-  out_plot<-ggplot(in_mat)+
-    geom_point(aes(y=Size,x=Year,size=value,col=as.factor(sign),alpha=obs))+
-    theme_bw()+xlab("Year")+ylab("Carapace width (mm)")+
-    labs(col="Error direction",size="Relative error")+guides(alpha='none')
-  # out_plot<-ggplot(in_mat)+
-  #   geom_point(aes(y=Size,x=Year,size=value,col=as.factor(sign)),alpha=.9)+
-  #   theme_bw()+xlab("Year")+ylab("Carapace width (mm)")+
-  #   labs(col="Residual direction",size="Residual size")
-  return(out_plot)
-}
+
 
 png(paste('plots/',species[y],'imm_size_comp_resids.png',sep=''),height=5,width=5,res=350,units='in')
-bubble_plot(obs_sc=oioi,pred_sc=tmp_size)
+print(bubble_plot(obs_sc=oioi,pred_sc=tmp_size))
 dev.off()
 
 png(paste('plots/',species[y],'imm_size_comp_all.png',sep=''),height=8,width=8,res=350,units='in')
@@ -474,7 +590,7 @@ print(mat_size_all)
 dev.off()
 
 png(paste('plots/',species[y],'mat_size_comp_resids.png',sep=''),height=5,width=5,res=350,units='in')
-bubble_plot(obs_sc=oioi,pred_sc=tmp_size)
+print(bubble_plot(obs_sc=oioi,pred_sc=tmp_size))
 dev.off()
 
 df2<-data.frame(pred=apply(outs_in[[y]]$'mature numbers at size',2,median),
@@ -556,10 +672,12 @@ dev.off()
 #=============================================
 # retained
 tmp_size<-outs_in[[y]]$'obs_retained_size_comp'
-if(species[y]=="Snow")
-  rownames(tmp_size)<-outs_in[[y]]$ret_cat_yrs
-if(species[y]=="Tanner")
- rownames(tmp_size)<-outs_in[[y]]$ret_cat_size_yrs
+if(y==1)
+ rownames(tmp_size)<-outs_in[[y]]$ret_cat_yrs
+if(y>=2)
+  rownames(tmp_size)<-outs_in[[y]]$disc_cat_yrs
+
+
 colnames(tmp_size)<-sizes
 df_1<-melt(tmp_size)
 colnames(df_1)<-c("Year","Size","Proportion")
@@ -626,38 +744,24 @@ ret_size<-ggplot() +
         panel.border = element_blank(),
         panel.background = element_blank()) 
 
-names(outs_in[[y]])
-# discards
 
-if(species[y]=="Snow")
-{
+# discards
   tmp_size<-outs_in[[y]]$'obs_discard_size_comp'
-  rownames(tmp_size)<-outs_in[[y]]$ret_cat_yrs
-}
-if(species[y]=="Tanner")
-{
-  tmp_size<-outs_in[[y]]$'obs_tot_size_comp'
-  rownames(tmp_size)<-outs_in[[y]]$tot_cat_size_yrs
-}
+
+  if(y==1)
+    rownames(tmp_size)<-outs_in[[y]]$ret_cat_yrs
+  if(y>=2)
+    rownames(tmp_size)<-outs_in[[y]]$disc_cat_yrs
+  
+  
 colnames(tmp_size)<-sizes
 df_1<-melt(tmp_size)
 colnames(df_1)<-c("Year","Size","Proportion")
 df_1$quant<-'Observed'
 
-
-if(species[y]=="Snow")
-{
   tmp_size1<-outs_in[[y]]$'pred_discard_size_comp'
   rownames(tmp_size1)<-years[-length(years)]
   colnames(tmp_size1)<-sizes
-}
-if(species[y]=="Tanner")
-{
-  tmp_size1<-outs_in[[y]]$'pred_tot_size_comp'
-  rownames(tmp_size1)<-years[-length(years)]
-  colnames(tmp_size1)<-sizes
-}
-
 
 tmp_size1[tmp_size1=='nan']<-0
 for(x in 1:ncol(tmp_size1))
@@ -694,13 +798,9 @@ print(disc_size_all)
 dev.off()
 
 #==aggregate
-if(species[y]=="Snow")
+
  df2<-data.frame(pred=apply(outs_in[[y]]$'pred_discard_size_comp',2,median),
                 Size=(sizes))
-if(species[y]=="Tanner")
-  df2<-filter(df_3,Proportion!=0)%>%
-  group_by(Size)%>%
-  summarize(pred=median(as.numeric(Proportion),na.rm=T))
 
 allLevels <- levels(factor(c(df_1$Size,df2$Size)))
 df_1$Size <- factor(df_1$Size,levels=(allLevels))
@@ -726,7 +826,10 @@ disc_size<-ggplot() +
 div_n<-1000000000
 trans_ret<-rep(0,length(years)-1)
 trans_ret[which(!is.na(match(years,outs_in[[y]]$ret_cat_yrs)))]<-outs_in[[y]]$ret_cat_numbers/div_n
-df_1<-data.frame(pred=outs_in[[y]]$pred_retained_n/div_n,
+in_preds<-outs_in[[y]]$pred_retained_n/div_n
+if(y>=2)
+  in_preds<-in_preds[-nrow(in_preds)]
+df_1<-data.frame(pred=in_preds,
                  obs=trans_ret,
                  year=years[-length(years)],
                  ci_dn=(trans_ret) /  exp(1.96*sqrt(log(1+0.05^2))),
@@ -747,11 +850,13 @@ ret_abnd<-ggplot(data=df_1)+
         panel.background = element_blank())
 
 # discards
-if(species[y]=="Snow")
-{
+
 trans_disc<-rep(0,length(years)-1)
-trans_disc[which(!is.na(match(years,outs_in[[y]]$ret_cat_yrs)))]<-outs_in[[y]]$disc_cat_numbers/div_n
-df_1<-data.frame(pred=outs_in[[y]]$pred_discard_n/div_n,
+trans_disc[which(!is.na(match(years,outs_in[[y]]$disc_cat_yrs)))]<-outs_in[[y]]$disc_cat_numbers/div_n
+in_preds<-outs_in[[y]]$pred_discard_n/div_n
+if(y>=2)
+  in_preds<-in_preds[-nrow(in_preds)]
+df_1<-data.frame(pred=in_preds,
                  obs=trans_disc,
                  year=years[-length(years)],
                  ci_dn=(trans_disc) /  exp(1.96*sqrt(log(1+0.07^2))),
@@ -769,31 +874,7 @@ disc_abnd<-ggplot(data=df_1)+
         panel.grid.minor = element_blank(),
         panel.border = element_blank(),
         panel.background = element_blank()) 
-}
 
-if(species[y]=="Tanner")
-{
-  trans_disc<-rep(0,length(years)-1)
-  trans_disc[which(!is.na(match(years,outs_in[[y]]$tot_cat_yrs)))]<-outs_in[[y]]$tot_cat_numbers/div_n
-  df_1<-data.frame(pred=outs_in[[y]]$pred_tot_n/div_n,
-                   obs=trans_disc,
-                   year=years[-length(years)],
-                   ci_dn=(trans_disc) /  exp(1.96*sqrt(log(1+0.07^2))),
-                   ci_up=(trans_disc) *  exp(1.96*sqrt(log(1+0.07^2))))
-  
-  disc_abnd<-ggplot(data=df_1)+
-    geom_segment(aes(x=year,xend=year,y=ci_dn,yend=ci_up))+
-    geom_point(aes(x=year,y=obs))+
-    geom_line(aes(x=year,y=pred),lwd=1.5,col='blue',alpha=.8)+
-    theme_bw()+
-    scale_x_continuous(position = "top",name='DISCARD')+
-    ylab("Abundance (billions)")+
-    theme(axis.line = element_line(colour = "black"),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.border = element_blank(),
-          panel.background = element_blank()) 
-}
 png(paste('plots/',species[y],'catch_fits.png',sep=''),height=8,width=8,res=350,units='in')
 print((ret_abnd/ret_size)|(disc_abnd/disc_size))
 dev.off()
@@ -807,22 +888,17 @@ dat_sel<-data.frame(value=c(outs_in[[y]]$'survey selectivity'[1,]),
                     sizes=rep(outs_in[[y]]$sizes),
                     est=c(rep("Estimated",length(outs_in[[y]]$sizes))),
                     era=c(rep("1982-present",length(outs_in[[y]]$sizes))))
-
-if(y==2) # tanner
+if(y==1)
 {
-  dat_sel1<-data.frame(value=c(outs_in[[y]]$'survey selectivity'[1,]),
-                      sizes=rep(outs_in[[y]]$sizes),
-                      est=c(rep("Estimated",length(outs_in[[y]]$sizes))),
-                      era=c(rep("1975-1981",length(outs_in[[y]]$sizes)))) 
-  dat_sel2<-data.frame(value=c(outs_in[[y]]$'survey selectivity'[30,]),
-                       sizes=rep(outs_in[[y]]$sizes),
-                       est=c(rep("Estimated",length(outs_in[[y]]$sizes))),
-                       era=c(rep("1982-present",length(outs_in[[y]]$sizes))))   
-  dat_sel<-rbind(dat_sel1,dat_sel2)
+  inret<-outs_in[[y]]$ret_fish_sel[1,]
+  intot<-outs_in[[y]]$total_fish_sel[1,]
 }
-
-
-fish_sel<-data.frame(value=c(outs_in[[y]]$ret_fish_sel[1,],outs_in[[y]]$total_fish_sel[1,]),
+if(y>1)
+{
+  inret<-outs_in[[y]]$ret_fish_sel
+  intot<-outs_in[[y]]$total_fish_sel
+}
+fish_sel<-data.frame(value=c(inret,intot),
                      sizes=rep(outs_in[[y]]$sizes,2),
                      Fishery=c(rep("Retained",length(outs_in[[y]]$sizes)),rep("Total",length(outs_in[[y]]$sizes))))
 
@@ -835,7 +911,7 @@ colnames(molt)<-c("Year","Size","Probability")
 s_sel<-ggplot()+
   geom_line(data=filter(dat_sel,est=="Estimated"),aes(x=sizes,y=value,col=era),lwd=2)+
   theme_bw()+ylab("Selectivity")+xlab("Carapace width (mm)")+
-  annotate("text",x=75,y=0.9,label="Survey")+
+  annotate("text",x=75,y=0.9,label="Survey")+theme(legend.position='none')
   ylim(0,1)
 
 molt_pl<-ggplot()+
@@ -878,9 +954,8 @@ p <- p + geom_density_ridges(aes(x=Premolt, y=Postmolt, height = Increment,
 png(paste('plots/',species[y],'model_growth.png',sep=''),height=8,width=8,res=350,units='in')
 print(p / (s_sel | f_sel |molt_pl) + plot_layout(nrow=2,heights=c(2,1)))
 dev.off()
-
-
-
-
 }
+
+
+
 

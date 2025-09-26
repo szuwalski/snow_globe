@@ -1,0 +1,16 @@
+both sgl and nfl fisheries happen april-June
+ GSL survey are summer (July-Sept)
+ NFL are spring (4-6) and fall (9-12)
+ebs fishery happens jan-feb; survey july-august
+
+this could be one of the reasons the prob term molt is different??
+
+pulled the wrong models--need the ones with skipmolting in there as it seems to be a big problem over there (figure out why we're different!)
+
+Revisit popdy models
+  include skipmolting for EBS?
+clean data file creation scripts so models can be easily updated
+Do probability of terminal molt GAMs for both next.
+make plots of catches.
+shape up the map figure (should there be one big figure with map, catch, abundances?)
+get data files read
