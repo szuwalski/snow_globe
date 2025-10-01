@@ -14,3 +14,6 @@ Do probability of terminal molt GAMs for both next.
 make plots of catches.
 shape up the map figure (should there be one big figure with map, catch, abundances?)
 get data files read
+
+plot retained catch over survey biomass
+

@@ -15,11 +15,6 @@ annotation_custom2 <-   function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf,yma
                                                                                                       params = list(grob = grob,xmin = xmin, xmax = xmax,
                                                                                                                     ymin = ymin, ymax = ymax))}
 
-
-gsl_area<-57842
-nfl_area<-364960
-ebs_area<-463400
-
 #==color coordinate the estimates with figure 1
 rep_files<-c("/models/ebs/snow_down.rep",
              "/models/nfl/snow_down.rep",
@@ -27,6 +22,7 @@ rep_files<-c("/models/ebs/snow_down.rep",
 
 species<-c("Bering Sea", "Newfoundland","Gulf of St Lawrence")
 in_col<-c("#3da550","#ff8f38","#726ad0")
+areas<-c(463400,364960,57842)
 
 outs_in<-list(list())
 for(x in 1:length(rep_files))
@@ -123,7 +119,8 @@ for(x in 1:length(cor_files))
   }
 }
 
-
+#==========================
+# combined trajectories
 stoopid<-keep_uncertainty_fishn
 stoopid2<-keep_uncertainty_totn
 stoopid$fraction<-"Fishable"
@@ -141,6 +138,33 @@ pop_traj<-ggplot()+
 png("plots/all_traj.png",height=6,width=9,res=400,units='in')
 print(pop_traj)
 dev.off()
+
+
+#==================================
+# densities of large crab over time
+# isntead of abundance
+in_pl$area<-areas[as.factor(in_pl$stock)]
+in_pl$density<-in_pl$tot_n/in_pl$area
+in_pl$dup<-in_pl$up_m/in_pl$area
+in_pl$ddn<-in_pl$dn_m/in_pl$area
+dens_traj<-ggplot()+
+  geom_ribbon(data=in_pl,aes(x=Year,ymin=ddn,ymax=dup,fill=stock),alpha=.3)+
+  geom_line(data=in_pl,aes(x=Year,y=density,col=stock),alpha=.7)+
+  geom_point(data=in_pl,aes(x=Year,y=density,col=stock),alpha=.7,size=.51)+
+  theme_bw()+
+  facet_wrap(~fraction,scales='free_y',ncol=1)+
+  scale_color_manual(values=in_col)+ylab("Density (crab/km^2)")+ 
+  scale_fill_manual(values=in_col)+
+  theme(legend.position=c(.8,.9))
+png("plots/all_traj_dens.png",height=9,width=6,res=400,units='in')
+print(dens_traj)
+dev.off()
+
+
+
+
+#==================================
+# exploitation rates on large crab
 
 ttt<-NULL
 for(x in 1:length(species))
