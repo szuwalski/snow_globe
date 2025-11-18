@@ -363,6 +363,13 @@ png("plots/fig_3.png",height=6,width=9,res=400,units='in')
 (imm_abnd/imm_proc) | (mat_abnd/mat_proc)
 dev.off()
 
+png("plots/fig_3_imm.png",height=6,width=9,res=400,units='in')
+(imm_abnd/imm_proc) 
+dev.off()
+
+png("plots/fig_3_mat.png",height=6,width=9,res=400,units='in')
+ (mat_abnd/mat_proc)
+dev.off()
 
 #============================================
 # correlations between time series

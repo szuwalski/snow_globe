@@ -22,6 +22,37 @@ gsl_env<-read.csv("data/gsl_gam_dat.csv")
 nfl_env<-read.csv("data/NFL_gam_dat.csv")
 ak_env<-read.csv("data/AK_gam_dat_2.csv")
 
+gsl_imm<-gsl_env[,c(2,7)]
+colnames(gsl_imm)<-c("Year","Temperature")
+gsl_imm$region<-"GSL_imm"
+gsl_mat<-gsl_env[,c(2,8)]
+colnames(gsl_mat)<-c("Year","Temperature")
+gsl_mat$region<-"GSL_mat"
+nfl_all<-nfl_env[,c(2,7)]
+colnames(nfl_all)<-c("Year","Temperature")
+nfl_all$region<-"NFL_all"
+ak_imm<-ak_env[,c(2,20)]
+colnames(ak_imm)<-c("Year","Temperature")
+ak_imm$region<-"AK_imm"
+ak_mat<-ak_env[,c(2,21)]
+colnames(ak_mat)<-c("Year","Temperature")
+ak_mat$region<-"AK_mat"
+
+all_temp<-rbind(gsl_imm,gsl_mat,nfl_all,ak_imm,ak_mat)
+
+png("plots/all_temp.png",height=9,width=6,res=350,units='in') 
+ggplot(all_temp)+
+  geom_line(aes(x=Year,y=Temperature,group=region,col=region),lwd=1.2)+
+  theme_bw()+facet_wrap(~region,ncol=2)+
+  theme(legend.position='none')
+dev.off()
+
+png("plots/all_temp_one.png",height=4,width=6,res=350,units='in') 
+ggplot(all_temp)+
+  geom_line(aes(x=Year,y=Temperature,group=region,col=region),lwd=1.2,alpha=.8)+
+  theme_bw()
+dev.off()
+
 #============================
 # chionoecetes species
 #============================

@@ -53,13 +53,22 @@ med_mat<-pmat_all%>%
   group_by(Size,Region)%>%
   summarize(med_mat=median(probability))
 
+mat_75<-filter(pmat_all,Size==72.5)
+
 alldat<-ggplot()+
   geom_line(data=pmat_all,aes(x=Size,y=probability,group=interaction(Year,Region),col=Region),alpha=0.1,lwd=1.1)+
   geom_line(data=med_mat,aes(x=Size,y=med_mat,group=(Region),col=Region),lwd=1.3)+
   theme_bw()+
-  theme(legend.position=c(.3,.85))+
+  theme(legend.position=c(.25,.8))+
   ylab("p(maturing)")+
   xlab("Carapace width (mm)")
+
+p_75<-ggplot()+
+  geom_line(data=mat_75,aes(x=Year,y=probability,group=(Region),col=Region),lwd=1.3)+
+  theme_bw()+
+  theme(legend.position="none")+
+  ylab("p(maturing) at 72.5mm")+
+  xlab("Year")
 
 save_dat<-NULL
 for(x in 1:length(use_stocks))
@@ -125,7 +134,7 @@ yoink<-ggplot(save_dat, aes(x = lg_abund, y = sm_abund, z = fit)) +
   geom_raster(aes(fill = fit), interpolate = TRUE) + # Or geom_contour()
   scale_fill_viridis_c() + # Or other color scales
   facet_wrap(~ model,scales='free',ncol=1) + # For separate panels per model
-  labs(title = "p(maturing) at 75 mm",
+  labs(title = "p(maturing) at 72.5 mm",
        x = ">95mm males",
        y = "<95mm males",
        fill = "Probability") +
@@ -134,4 +143,8 @@ yoink<-ggplot(save_dat, aes(x = lg_abund, y = sm_abund, z = fit)) +
 
 png("plots/all_maturity.png",height=6,width=9,res=350,units='in') 
 alldat + yoink
+dev.off()
+
+png("plots/all_maturity_2.png",height=8,width=9,res=350,units='in') 
+(alldat/p_75) | yoink
 dev.off()
